@@ -1,9 +1,18 @@
+data "aws_lambda_function" "function" {
+  function_name = var.function_name
+}
+
+data "aws_apigatewayv2_api" "apigw" {
+  api_id = var.apigw_id
+}
+
+
 resource "aws_lambda_permission" "allow_apigateway" {
   for_each      = toset(var.routes)
   statement_id  = sha1(each.value)
   function_name = var.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_execution_arn}/*/${replace(each.value, " ", "")}"
+  source_arn    = "${data.aws_apigatewayv2_api.apigw.execution_arn}/*/${replace(each.value, " ", "")}"
   action        = "lambda:InvokeFunction"
 }
 
@@ -25,7 +34,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
   description = "Integration for ${var.function_name}"
 
   integration_type   = "AWS_PROXY"
-  integration_uri    = var.function_invoke_arn
+  integration_uri    = data.aws_lambda_function.function.invoke_arn
   integration_method = "POST"
 
   passthrough_behavior = "WHEN_NO_MATCH"
